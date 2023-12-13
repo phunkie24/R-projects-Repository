@@ -1,0 +1,305 @@
+---
+title: "Model Development"
+author: "Olufunke YUSUF"
+date: "2023-12-11"
+output: html_document
+---
+
+```{r}
+# Load tidyverse
+library(tidyverse)
+```
+
+```{r}
+# url where the data is located
+url <- "https://dax-cdn.cdn.appdomain.cloud/dax-airline/1.0.1/lax_to_jfk.tar.gz"
+
+# download the file
+download.file(url, destfile = "lax_to_jfk.tar.gz")
+
+# if you run this on your local machine, then can remove tar = "internal" 
+untar("lax_to_jfk.tar.gz", tar = "internal")
+
+# read_csv only 
+sub_airline <- read_csv("lax_to_jfk/lax_to_jfk.csv",
+                     col_types = cols('DivDistance' = col_number(), 
+                                      'DivArrDelay' = col_number()))
+```
+
+```{r}
+# Define dataset with just AA as the Reporting_Airline
+aa_delays <- sub_airline %>%
+  filter(CarrierDelay != "NA", Reporting_Airline == "AA")
+
+head(aa_delays)
+```
+
+
+```{r}
+linear_model <- lm(ArrDelayMinutes ~ DepDelayMinutes, data = aa_delays)
+```
+
+
+```{r}
+summary(linear_model)
+```
+
+```{r}
+# Input data we use to predict
+new_depdelay <- data.frame(
+  DepDelayMinutes = c(12, 19, 24))
+
+# Predict the data points
+pred <- predict(linear_model, newdata = new_depdelay, interval = "confidence")
+pred
+```
+
+```{r}
+linear_model$coefficients
+```
+
+
+```{r}
+linear_model2 <- lm( ArrDelayMinutes~ CarrierDelay, data = aa_delays)
+```
+
+
+```{r}
+summary(linear_model2)
+```
+
+
+```{r}
+# Input data we use to predict
+new_cardelay <- data.frame(
+  CarrierDelay = c(12, 19, 24))
+
+# Predict the data points
+pred <- predict(linear_model, newdata = new_cardelay, interval = "confidence")
+pred
+```
+
+
+```{r}
+linear_model$coefficients
+```
+
+
+```{r}
+mlr <- lm(ArrDelayMinutes ~ DepDelayMinutes + LateAircraftDelay, data = aa_delays)
+
+summary(mlr)
+```
+```{r}
+mlr$coefficients
+```
+
+
+```{r}
+mlr2 <- lm(
+        ArrDelayMinutes ~ DepDelayMinutes + 
+        LateAircraftDelay + CarrierDelay, 
+        data = aa_delays)
+
+summary(mlr2)  
+```
+
+
+```{r}
+mlr2$coefficients
+```
+
+
+```{r}
+# New data points
+DepDelayMinutes <- c(10, 20, 30)
+LateAircraftDelay <- c(20, 60, 30)
+new_multidelay <- data.frame(DepDelayMinutes, LateAircraftDelay)
+```
+
+
+```{r}
+red <- predict(mlr, 
+        newdata = new_multidelay, 
+        interval = "confidence")  
+```
+
+
+```{r}
+summary(red)
+```
+
+
+```{r}
+ggplot(aa_delays, aes(x = DepDelayMinutes, y = ArrDelayMinutes)) +
+  geom_point() + 
+  stat_smooth(method = "lm", col = "red")
+```
+
+
+```{r}
+ggplot(
+    aa_delays, 
+    aes(x = CarrierDelay, y = ArrDelayMinutes)) +
+  geom_point() + 
+  stat_smooth(method = "lm", col = "red")
+```
+
+
+```{r}
+cor(aa_delays$DepDelayMinutes, 
+    aa_delays$ArrDelayMinutes)
+cor(aa_delays$CarrierDelay, 
+    aa_delays$ArrDelayMinutes)
+```
+```{r}
+aa_delays <- sub_airline %>%
+  filter(CarrierDelay != "NA", Reporting_Airline == "AA")
+score_model <- lm(ArrDelayMinutes ~ DepDelayMinutes, data = aa_delays)
+aa_delays$predicted <- predict(score_model)
+
+ggplot(aa_delays, aes(x = DepDelayMinutes, y = ArrDelayMinutes)) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +  # Plot regression slope
+  geom_segment(aes(xend = DepDelayMinutes, yend = predicted), alpha = .2) +  # alpha to fade lines
+  geom_point() +
+  geom_point(aes(y = predicted), shape = 1) +
+  theme_bw()  # Add theme for cleaner look
+```
+
+
+```{r}
+linear_model <- lm(ArrDelayMinutes ~ DepDelayMinutes, data = aa_delays)
+plot(linear_model)
+```
+
+
+```{r}
+ggplot(lm(ArrDelayMinutes ~ DepDelayMinutes, data = aa_delays)) +
+  geom_point(aes(x=DepDelayMinutes, y=.resid))
+```
+
+
+```{r}
+set.seed(20)
+x <- seq(from=0, to=20, by=0.1)
+
+# value to predict (y):
+y <- 500 + 0.4 * (x-10)^3
+
+# some noise is generated and added to the real signal (y):
+noise <- rnorm(length(x), mean=10, sd=80)
+noisy.y <- y + noise
+```
+
+
+```{r}
+# fit linear model
+ggplot(data=NULL,aes(x, noisy.y)) + 
+    geom_point() + 
+    geom_smooth(method = "lm")
+```
+
+
+```{r}
+time <- 6:19
+temp <- c(4,6,7,9,10,11,11.5,12,12,11.5,11,10,9,8)
+
+ggplot(data = NULL, aes(time, temp)) + 
+    geom_point() 
+```
+
+
+```{r}
+polyfit2 <- lm(temp ~ poly(time, 2, raw = TRUE))
+
+summary(polyfit2)
+```
+
+
+```{r}
+ggplot(data = NULL, aes(time, temp)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", formula = y ~ poly(x, 2)) 
+```
+
+
+```{r}
+# calculate polynomial
+polyfit4 <- lm(temp ~ poly(time, 4, raw = TRUE))
+# print results
+summary(polyfit4)
+```
+
+
+```{r}
+temp = 0.9580 -1.683 * time 
+    + 0.5770 * time^2 
+    - 0.03971 * time^3 
+    + 0.0007906 * time^4
+```
+
+
+```{r}
+linear_model <- lm(ArrDelayMinutes ~ DepDelayMinutes, aa_delays)
+```
+
+
+```{r}
+mse <- mean(linear_model$residuals^2)
+mse
+```
+
+
+```{r}
+rmse <- sqrt(mse)
+rmse
+```
+
+
+```{r}
+summary(linear_model)$r.squared
+```
+
+
+```{r}
+mlr <- lm(ArrDelayMinutes ~ DepDelayMinutes + LateAircraftDelay, data = aa_delays)
+
+mse_mlr <- mean(mlr$residuals^2)
+mse_mlr
+
+rmse_mlr <- sqrt(mse_mlr)
+rmse_mlr
+
+summary(mlr)$r.squared
+
+```
+```{r}
+poly_reg <- lm(ArrDelayMinutes ~ poly(DepDelayMinutes, 3), data = aa_delays)
+
+mse_poly <- mean(poly_reg$residuals^2)
+mse_poly
+
+rmse_poly <- sqrt(mse)
+rmse_poly
+
+summary(poly_reg)$r.squared
+```
+
+
+```{r}
+# For example we want to predict the score model we created in a previous section
+head(predict(score_model))
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

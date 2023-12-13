@@ -1,0 +1,332 @@
+---
+title: "Project"
+author: "Olufunke YUSUF"
+date: "2023-12-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Library for modeling
+library(tidymodels)
+
+# Load tidyverse
+library(tidyverse)
+```
+
+```{r}
+URL <- 'https://dax-cdn.cdn.appdomain.cloud/dax-noaa-weather-data-jfk-airport/1.1.4/noaa-weather-sample-data.tar.gz'
+
+# Download the file
+download.file(URL, destfile = "noaa-weather-sample-data.tar.gz")
+
+# Untar the downloaded file
+untar("noaa-weather-sample-data.tar.gz", exdir = ".")
+```
+
+
+```{r}
+# Read the CSV file
+noaa_weather <- read_csv("C:/Users/HP/Downloads/noaa-weather-sample-data (1)/noaa-weather-sample-data/jfk_weather_sample.csv")
+
+# Display the first few rows of the data
+head(noaa_weather)
+```
+
+
+```{r}
+glimpse(noaa_weather)
+```
+
+
+```{r}
+tail(noaa_weather)
+```
+
+
+```{r}
+dim(noaa_weather)
+```
+
+
+```{r}
+colnames(noaa_weather)
+```
+
+Preprocessing Data
+```{r}
+noaa_weather %>%
+  select(HOURLYRelativeHumidity,HOURLYDRYBULBTEMPF,HOURLYPrecip,HOURLYWindSpeed,HOURLYStationPressure)
+```
+
+
+```{r}
+unique(noaa_weather$HOURLYPrecip)
+```
+
+```{r}
+noaa_weather %>%
+  HP<-select(HOURLYPrecip)
+```
+
+
+```{r}
+# Remove "s" from HOURLYPrecip column
+noaa_weather <- noaa_weather %>%
+  mutate(HOURLYPrecip = str_remove(HOURLYPrecip, "s"))
+```
+
+
+```{r}
+noaa_weather %>%
+  select(HOURLYPrecip)
+```
+
+
+```{r}
+# Replace "T" with "0.00" in HOURLYPrecip column
+noaa_weather <- noaa_weather %>%
+  mutate(HOURLYPrecip = ifelse(HOURLYPrecip == "T", "0.00", HOURLYPrecip))
+```
+
+
+```{r}
+noaa_weather%>%
+  select(HOURLYPrecip)
+```
+
+
+```{r}
+glimpse(noaa_weather)
+```
+
+
+```{r}
+# Convert HOURLYPrecip to numeric type
+noaa_weather <- noaa_weather %>%
+  mutate(HOURLYPrecip = as.numeric(HOURLYPrecip))
+```
+
+```{r}
+head(noaa_weather)
+```
+
+
+```{r}
+# Rename specified columns
+noaa_weather <- noaa_weather %>%
+  rename(
+    relative_humidity = HOURLYRelativeHumidity,
+    dry_bulb_temp_f = HOURLYDRYBULBTEMPF,
+    precip = HOURLYPrecip,
+    wind_speed = HOURLYWindSpeed,
+    station_pressure = HOURLYStationPressure
+  )
+
+# Display the modified data with renamed columns
+cat("\nModified data with columns renamed:\n")
+head(noaa_weather)
+```
+
+
+```{r}
+set.seed(1234)
+noaa_split <- initial_split(noaa_weather)
+train_data <- training(noaa_split)
+test_data <- testing(noaa_split)
+```
+
+
+```{r}
+noaa_split2 <- initial_split(noaa_weather, prop = 0.8)  # prop = 0.8 works as well
+train_data2 <- training(noaa_split2)
+test_data2 <- testing(noaa_split2)
+```
+
+
+```{r}
+# Plot histograms for the specified variables
+train_data %>%
+  ggplot(aes(x = relative_humidity)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
+  labs(title = "Histogram of Relative Humidity", x = "Relative Humidity", y = "Frequency")
+```
+
+
+```{r}
+train_data %>%
+  ggplot(aes(x = dry_bulb_temp_f)) +
+  geom_histogram(binwidth = 2, fill = "lightgreen", color = "black") +
+  labs(title = "Histogram of Dry Bulb Temperature (F)", x = "Dry Bulb Temperature (F)", y = "Frequency")
+```
+
+
+```{r}
+train_data %>%
+  ggplot(aes(x = precip)) +
+  geom_histogram(binwidth = 0.1, fill = "coral", color = "black") +
+  labs(title = "Histogram of Precipitation", x = "Precipitation", y = "Frequency")
+```
+
+
+```{r}
+train_data %>%
+  ggplot(aes(x = wind_speed)) +
+  geom_histogram(binwidth = 2, fill = "lightcoral", color = "black") +
+  labs(title = "Histogram of Wind Speed", x = "Wind Speed", y = "Frequency")
+```
+
+
+```{r}
+train_data %>%
+  ggplot(aes(x = station_pressure)) +
+  geom_histogram(binwidth = 0.1, fill = "lightblue", color = "black") +
+  labs(title = "Histogram of Station Pressure", x = "Station Pressure", y = "Frequency")
+```
+
+
+```{r}
+# List of predictor variables
+predictors <- c("relative_humidity", "dry_bulb_temp_f", "wind_speed", "station_pressure")
+```
+
+```{r}
+# Pick linear regression
+lm_spec <- linear_reg() %>%
+  # Set engine
+  set_engine(engine = "lm")
+
+# Print the linear function
+lm_spec
+```
+```{r}
+train_fit <- lm_spec %>% 
+    fit(precip~relative_humidity, data = train_data)
+
+train_fit
+```
+```{r}
+```{r}
+# Visualize the model with a scatter plot
+  ggplot(train_data, aes_string(x = relative_humidity, y = "precip")) +
+    geom_point(color = "blue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(title = paste("Simple Linear Regression: precip ~", relative_humidity),
+         x = "Relative Humidity",
+         y = "Precipitation")
+```
+
+```{r}
+train_fit <- lm_spec %>% 
+    fit(precip~dry_bulb_temp_f, data = train_data)
+
+train_fit
+```
+
+
+```{r}
+train_fit <- lm_spec %>% 
+    fit(precip~wind_speed, data = train_data)
+
+train_fit
+```
+```{r}
+train_fit <- lm_spec %>% 
+    fit(precip~station_pressure, data = train_data)
+
+train_fit
+```
+
+
+```{r}
+predictors <- c("relative_humidity", "dry_bulb_temp_f", "wind_speed", "station_pressure")
+
+options(repr.plot.width = 10, repr.plot.height = 8) # Adjust the plot size if needed
+par(mfrow = c(1, 2))
+
+for (predictor in predictors) {
+  formula <- formula(paste("precip ~", predictor))
+  lm_model <- lm(formula, data = train_data)
+  plot(train_data[[predictor]], train_data$precip, main = paste("Scatter Plot: precip ~", predictor),
+       xlab = predictor, ylab = "Precipitation", col = "blue")
+  abline(lm_model, col = "red")
+  
+    cat("\nLinear Regression Model Summary for", predictor, ":\n")
+  print(summary(lm_model))
+}
+
+par(mfrow = c(1, 1))
+
+```
+
+
+```{r}
+# Print the coefficients of the linear regression model
+  cat("\nLinear Regression Model Summary for", predictor, ":\n")
+  print(summary(lm_model))
+
+```
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(tidymodels)
+
+# Model 1: Add more features
+model1_formula <- formula("precip ~ relative_humidity + dry_bulb_temp_f + wind_speed + station_pressure")
+lm_model1 <- lm(model1_formula, data = train_data)
+```
+
+
+```{r}
+# Model 2: Add regularization using tidymodels (L1 regularization with glmnet)
+set.seed(1234)
+model2_spec <- linear_reg() %>%
+  set_engine("glmnet") %>%
+  set_mode("regression")
+
+model2_recipe <- recipe(precip ~ relative_humidity + dry_bulb_temp_f + wind_speed + station_pressure, data = train_data)
+```
+
+
+```{r}
+results %>% collect_metrics()
+```
+
+
+```{r}
+# Model 1: Linear Regression with More Features
+test_predictions1 <- predict(lm_model1, newdata = test_data)
+rmse_test <- sqrt(mean((test_predictions1 - test_data$precip)^2))
+r_squared1_test <- cor(test_predictions1, test_data$precip)^2
+```
+
+
+```{r}
+ggplot(cars, aes(x = relative_humidity, y = precipe)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", 
+                formula = y ~ poly(x, 8), 
+                col = "red", se = FALSE) 
+```
+
+
+```{r}
+# Model 3: (Add more models as needed)
+
+# Create a comparison table
+model_names <- c("Model 1 (More Features)", "Model 2 (Regularized Linear Regression)")
+train_rmse <- c(rmse1, rmse2)
+test_rmse <- c(rmse1_test, rmse2_test)
+train_r_squared <- c(r_squared1, r_squared2)
+test_r_squared <- c(r_squared1_test, r_squared2_test)
+
+comparison_df <- data.frame(model_names, train_rmse, test_rmse, train_r_squared, test_r_squared)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
